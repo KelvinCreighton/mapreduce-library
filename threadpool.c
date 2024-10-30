@@ -75,8 +75,13 @@ bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
 *     ThreadPool_job_t* - Next job to run
 */
 ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
-	
-    return NULL;
+	if (tp->jobs.head == NULL) {
+        return NULL;
+    }
+    ThreadPool_job_t *nextJob = tp->jobs.head;
+    tp->jobs.head = nextJob->next;  // Set the head to the next element
+    tp->jobs.size -= 1;
+    return nextJob;
 }
 
 /**

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "mapreduce.h"
 #include "threadpool.h"
 
@@ -31,7 +32,14 @@ void MR_Run(unsigned int file_count, char *file_names[],
     }
     */
 
-    
+    ThreadPool_job_t *job = ThreadPool_get_job(threadPool);
+    if (job != NULL) {
+        job->func(job->arg);
+        free(job);
+        job = NULL;         // Remove the dangling pointer
+    }
+
+
 }
 
 /**
@@ -53,7 +61,11 @@ void MR_Emit(char *key, char *value) {
 *     unsigned int  - Index of the partition
 */
 unsigned int MR_Partitioner(char *key, unsigned int num_partitions) {
-	return 0;
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *key++) != '\0')
+        hash = hash * 33 + c;
+    return hash % num_partitions;
 }
 
 /**

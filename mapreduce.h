@@ -1,13 +1,6 @@
 #ifndef MAPREDUCE_H
 #define MAPREDUCE_H
 
-// Threadpool MinHeap
-typedef struct {
-    char *file_name;
-    size_t size;
-} Job;
-
-
 // function pointer typedefs
 typedef void (*Mapper)(char *file_name);
 typedef void (*Reducer)(char *key, unsigned int partition_idx);

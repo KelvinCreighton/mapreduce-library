@@ -7,6 +7,7 @@ TODO:
 
 - convert the algorithm in ThreadPool_add_job to a SJF instead of is current FCFS method
 - in ThreadPool_add_job add a success and failure return
+- remove any <stdio.h> includes (no i/o)
 
 QUESTIONS:
 - should the #includes for other librariers like <stdio.h> be in the header file or the c file?

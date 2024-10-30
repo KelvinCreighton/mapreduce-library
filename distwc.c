@@ -5,6 +5,7 @@
 #include "mapreduce.h"
 
 void Map(char *file_name) {
+    printf("made it here: %s\n", file_name);
     FILE *fp = fopen(file_name, "r");
     assert(fp != NULL);
 
