@@ -3,6 +3,27 @@
 #include "mapreduce.h"
 #include "threadpool.h"
 
+PartitionTable_t PartitionTable;
+
+void showPartitionTable() {
+    for (unsigned int i = 0; i < PartitionTable.size; i++) {
+        printf("%d", i);
+
+        /*PartitionTableBucket_t bucket = PartitionTable.buckets[i];
+        PartitionTableNode_t *node = bucket.head;
+        printf("[%d]", i);
+        if (node == NULL)
+            continue;
+        printf("->[key: %s, value %s]", node->key, node->value); 
+        while (node->next != NULL) {
+            node = node->next;
+            printf("->[key: %s, value %s]", node->key, node->value);
+        }*/
+        printf("\n");
+    }
+}
+
+
 /**
 * Run the MapReduce framework
 * Parameters:
@@ -16,9 +37,18 @@
 void MR_Run(unsigned int file_count, char *file_names[],
             Mapper mapper, Reducer reducer, 
             unsigned int num_workers, unsigned int num_parts) {
-	
+	// Create the partition table for the key value pair
+    PartitionTable.buckets = malloc(num_parts * sizeof(PartitionTable_t));
+    // Start each bucket with size 0
+    for (unsigned int i = 0; i < num_parts; i++) {
+        PartitionTable.buckets[i].size = 0;
+    }
+    PartitionTable.size = num_parts;
+
+    // Create the worker threads
 	ThreadPool_t *threadPool = ThreadPool_create(num_workers);
 
+    // Add the jobs to the job queue
 	for (unsigned int i = 0; i < file_count; i++) {
        ThreadPool_add_job(threadPool, (void *)mapper, file_names[i]); 
     }
@@ -31,15 +61,10 @@ void MR_Run(unsigned int file_count, char *file_names[],
         currentJob = currentJob->next;
     }
     */
-
-    ThreadPool_job_t *job = ThreadPool_get_job(threadPool);
-    if (job != NULL) {
-        job->func(job->arg);
-        free(job);
-        job = NULL;         // Remove the dangling pointer
-    }
-
-
+    
+    Thread_run(threadPool);
+    printf("testingpoint\n");
+    showPartitionTable();
 }
 
 /**
@@ -49,7 +74,20 @@ void MR_Run(unsigned int file_count, char *file_names[],
 *     value         - Value of the output
 */
 void MR_Emit(char *key, char *value) {
-
+    // Get the hash of the key
+    unsigned int hash = MR_Partitioner(key, PartitionTable.size);
+    PartitionTableBucket_t currentBucket = PartitionTable.buckets[hash];
+    // Add the key value pair to the partition table
+    PartitionTableNode_t *node = malloc(sizeof(PartitionTableNode_t));
+    node->key = key;
+    node->value = value;
+    if (currentBucket.head != NULL) {
+        // Set the current head as the next of the new node
+        node->next = currentBucket.head;
+   } 
+   // Add the new node as the head and increment the size
+   currentBucket.head = node;
+   currentBucket.size += 1;
 }
 
 /**

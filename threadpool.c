@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <sys/stat.h>
+#include <stdio.h>
 #include "threadpool.h"
 
 
@@ -91,7 +91,10 @@ ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
 *     tp - Pointer to the ThreadPool object containing this thread
 */
 void *Thread_run(ThreadPool_t *tp) {
-	return NULL;
+	ThreadPool_job_t *job = ThreadPool_get_job(tp);
+    job->func(job->arg);
+    printf("done processing\n");
+    return NULL;
 }
 
 /**
