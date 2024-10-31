@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <sys/stat.h>
 #include "threadpool.h"
 
 
@@ -25,27 +24,16 @@ void ThreadPool_destroy(ThreadPool_t *tp) {
 }
 
 
-bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
-    struct stat jobFile_st;
-
-    // Get the new jobs file size
-    if (stat((char *)arg, &jobFile_st) != 0) {
-        return false;   // File doesnt exist or some other error
-    }
-
+bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg, unsigned int priority) {
     // Create a new job
     ThreadPool_job_t *job = malloc(sizeof(ThreadPool_job_t)); 
     job->func = func;
     job->arg = arg;
+    job->priority = priority;
 
-    // Insert the job in ascending order by file size
+    // Insert the job in ascending order by priority
     ThreadPool_job_t **current = &tp->jobs.head;
-    struct stat currentJobFile_st;
-    while (*current != NULL) {
-        stat((char *)(*current)->arg, &currentJobFile_st);
-        if (currentJobFile_st.st_size > jobFile_st.st_size) {
-            break;
-        }
+    while (*current != NULL && (*current)->priority < job->priority) {
         current = &(*current)->next;
     }
 
