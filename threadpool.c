@@ -55,7 +55,6 @@ bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
 	if (tp->jobs.size == 0) {
         tp->jobs.head = newJob;
     } else {
-        // This is bad
         ThreadPool_job_t *currentJob = tp->jobs.head;
         while (currentJob->next != NULL) {
             currentJob = currentJob->next;
@@ -78,10 +77,10 @@ ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
 	if (tp->jobs.head == NULL) {
         return NULL;
     }
-    ThreadPool_job_t *nextJob = tp->jobs.head;
-    tp->jobs.head = nextJob->next;  // Set the head to the next element
+    ThreadPool_job_t *job = tp->jobs.head;
+    tp->jobs.head = job->next;  // Set the head to the next element
     tp->jobs.size -= 1;
-    return nextJob;
+    return job;
 }
 
 /**
@@ -91,10 +90,16 @@ ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
 *     tp - Pointer to the ThreadPool object containing this thread
 */
 void *Thread_run(ThreadPool_t *tp) {
-	ThreadPool_job_t *job = ThreadPool_get_job(tp);
+    ThreadPool_job_t *job = ThreadPool_get_job(tp);
+    printf("getjob: %s\n", (char *)(job->arg));
     job->func(job->arg);
     printf("done processing\n");
     return NULL;
+}
+
+void Mytr(thread_func_t func, void *arg) {
+    func(arg);
+    printf("done processing\n");
 }
 
 /**

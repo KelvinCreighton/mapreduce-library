@@ -24,6 +24,7 @@ typedef struct {
     // add other members if needed
 } ThreadPool_t;
 
+void Mytr(thread_func_t func, void *arg);
 
 /**
 * C style constructor for creating a new ThreadPool object

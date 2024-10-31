@@ -21,3 +21,9 @@ wordcount: $(OBJ)
 clean:
 	rm -f $(OBJ) $(EXEC)
 
+test:
+	make clean
+	make
+	./wordcount sample_inputs/sample11.txt
+
+
