@@ -9,6 +9,7 @@ typedef struct PartitionTable_node_t {
 } PartitionTable_node_t;
 
 typedef struct {
+    unsigned int index;
     unsigned int size;
     PartitionTable_node_t *head;
 } PartitionTable_bucket_t;
@@ -17,6 +18,7 @@ typedef struct {
     unsigned int size;
     PartitionTable_bucket_t *buckets;
 } PartitionTable_t;
+
 
 
 // function pointer typedefs

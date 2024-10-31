@@ -32,7 +32,11 @@ void showPartitionTable(unsigned int limited) {
 void showThreadPoolJobs(ThreadPool_t *tp) {
     ThreadPool_job_t *job = tp->jobs.head;
     while (job != NULL) {
-        printf("[%s]->", (char *)job->arg);
+        if (job->funcType == 0) {
+            printf("[%s]->", (char *)job->arg);
+        } else if (job->funcType == 1) {
+            printf("[%s, %d]->", (PartitionTable_bucket_t *)(job->arg)->head->key, job->arg.index);
+        }
         job = job->next;
     }
     printf("[NULL]\n");
@@ -55,15 +59,15 @@ void MR_Run(unsigned int file_count, char *file_names[],
 
     for (unsigned int i = 0; i < num_parts; i++) {
         pt->buckets[i].size = 0;
+        pt->buckets[i].index = i;
     }
 
     ThreadPool_t *tp = ThreadPool_create(num_workers);
     for (unsigned int i = 0; i < file_count; i++) {
         struct stat st;
-        if (stat(file_names[i], &st)) {
+        if (stat(file_names[i], &st))
             continue; // File doesnt exist
-        }
-        ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]), st.st_size);
+        ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]), 0, st.st_size);
     }
 
     showThreadPoolJobs(tp);
@@ -74,6 +78,15 @@ void MR_Run(unsigned int file_count, char *file_names[],
     
     printline();
     showPartitionTable(5);
+    printline();
+
+    for (unsigned int i = 0; i < pt->size; i++) {
+        if (pt->buckets[i].size == 0)
+            continue;   // No keyvalue pairs to process
+        ThreadPool_add_job(tp, (void *)reducer, (void *)&pt->buckets[i], 1, pt->buckets[i].size);
+    }
+
+    showThreadPoolJobs(tp);
     printline();
 
     printf("MR_Emit() run count: %d\n", MR_EmitTest_int);

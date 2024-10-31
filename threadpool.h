@@ -10,6 +10,7 @@ typedef struct ThreadPool_job_t {
     void *arg;                       // arguments for that function
     struct ThreadPool_job_t *next;   // pointer to the next job in the queue
     unsigned int priority;
+    unsigned int funcType;
 } ThreadPool_job_t;
 
 typedef struct {
@@ -53,7 +54,7 @@ void ThreadPool_destroy(ThreadPool_t *tp);
 *     true  - On success
 *     false - Otherwise
 */
-bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg, unsigned int priority);
+bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg, unsigned int funcType, unsigned int priority);
 
 /**
 * Get a job from the job queue of the ThreadPool object
