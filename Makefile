@@ -24,6 +24,6 @@ clean:
 test:
 	make clean
 	make
-	./wordcount sample_inputs/sample11.txt
+	./wordcount sample_inputs/sample11.txt sample_inputs/sample10.txt sample_inputs/sample9.txt
 
 

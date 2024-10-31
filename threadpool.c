@@ -6,51 +6,23 @@
 
 
 ThreadPool_t *ThreadPool_create(unsigned int num) {
-        ThreadPool_t *tp = malloc(sizeof(ThreadPool_t));
-        tp->threads = malloc(num * sizeof(pthread_t));
+    ThreadPool_t *tp = malloc(sizeof(ThreadPool_t));
+    tp->threads = malloc(num * sizeof(pthread_t));
 
-        tp->jobs.size = 0;
-        tp->jobs.head = NULL;
+    tp->jobs.size = 0;
+    tp->jobs.head = NULL;
         
-        for (unsigned int i = 0; i < num; i++) {
-                pthread_create(&tp->threads[i], NULL, (void *)Thread_run, tp);
-        }
+    /*for (unsigned int i = 0; i < num; i++) {
+        pthread_create(&tp->threads[i], NULL, (void *)Thread_run, tp);
+    }*/
 
-        return tp;
+    return tp;
 }
 
 
 void ThreadPool_destroy(ThreadPool_t *tp) {
     
 }
-
-/*bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
-    struct stat jobFile_st;
-
-    if (stat((char *)arg, &jobFile_st) != 0) {
-        return false;
-    }
-    
-    ThreadPool_job_t *job = malloc(sizeof(ThreadPool_job_t));
-    job->func = func;
-    job->arg = arg;
-    
-    ThreadPool_job_t **current = &tp->jobs.head;
-    struct stat currentFile_st;
-    // Traverse the queue looking for the next biggest file size
-    while (current != NULL) {
-        stat((char *)(*current)->arg, &currentFile_st);
-        if (currentFile_st.st_size > jobFile_st.st_size) {
-            break;
-        }
-        current = &(*current)->next;
-    }
-
-    // Insert the job at the previous position making the queue in ascending order of file size
-    job->next = *current;
-    *current = job;
-    return false;
-}*/
 
 
 bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
@@ -65,13 +37,10 @@ bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
     ThreadPool_job_t *job = malloc(sizeof(ThreadPool_job_t)); 
     job->func = func;
     job->arg = arg;
-    job->next = NULL;
 
     // Insert the job in ascending order by file size
     ThreadPool_job_t **current = &tp->jobs.head;
     struct stat currentJobFile_st;
-
-    // Traverse the list to find the right insertion point
     while (*current != NULL) {
         stat((char *)(*current)->arg, &currentJobFile_st);
         if (currentJobFile_st.st_size > jobFile_st.st_size) {
@@ -80,7 +49,6 @@ bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
         current = &(*current)->next;
     }
 
-    // Insert the job at the found position
     job->next = *current;
     *current = job;
 
@@ -89,16 +57,21 @@ bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
 
 
 ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
-    return NULL;
+    if (tp->jobs.head == NULL)
+        return NULL;
+    ThreadPool_job_t *job = tp->jobs.head;
+    tp->jobs.head = tp->jobs.head->next;
+    return job;
 }
 
 void *Thread_run(ThreadPool_t *tp) {
-    return NULL;
-}
+    ThreadPool_job_t *job = ThreadPool_get_job(tp);
+    if (job != NULL) {
+        job->func(job->arg);
+        printf("done processing: %s\n", (char *)job->arg);
+    }
 
-void Mytr(thread_func_t func, void *arg) {
-    func(arg);
-    printf("done processing\n");
+    return NULL;
 }
 
 
