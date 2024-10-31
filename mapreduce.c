@@ -35,7 +35,8 @@ void showThreadPoolJobs(ThreadPool_t *tp) {
         if (job->funcType == 0) {
             printf("[%s]->", (char *)job->arg);
         } else if (job->funcType == 1) {
-            printf("[%s, %d]->", (PartitionTable_bucket_t *)(job->arg)->head->key, job->arg.index);
+            PartitionTable_bucket_t *bucket = (PartitionTable_bucket_t *)job->arg;
+            printf("[%s, %d]->", bucket->head->key, bucket->index);
         }
         job = job->next;
     }
@@ -83,7 +84,7 @@ void MR_Run(unsigned int file_count, char *file_names[],
     for (unsigned int i = 0; i < pt->size; i++) {
         if (pt->buckets[i].size == 0)
             continue;   // No keyvalue pairs to process
-        ThreadPool_add_job(tp, (void *)reducer, (void *)&pt->buckets[i], 1, pt->buckets[i].size);
+        ThreadPool_add_job(tp, (void *)reducer, (void *)&(pt->buckets[i]), 1, pt->buckets[i].size);
     }
 
     showThreadPoolJobs(tp);
