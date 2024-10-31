@@ -1,25 +1,6 @@
 #ifndef MAPREDUCE_H
 #define MAPREDUCE_H
 
-// Partition hash table structs
-typedef struct PartitionTableNode_t {
-    char *key;
-    char *value;
-    struct PartitionTableNode_t *next;
-} PartitionTableNode_t;
-
-typedef struct PartitionTableBucket_t {
-    unsigned int size;
-    PartitionTableNode_t *head;
-} PartitionTableBucket_t;
-
-typedef struct PartitionTable_t {
-    unsigned int size;
-    PartitionTableBucket_t *buckets;
-} PartitionTable_t;
-
-
-
 // function pointer typedefs
 typedef void (*Mapper)(char *file_name);
 typedef void (*Reducer)(char *key, unsigned int partition_idx);

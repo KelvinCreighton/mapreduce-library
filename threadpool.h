@@ -13,7 +13,7 @@ typedef struct ThreadPool_job_t {
 } ThreadPool_job_t;
 
 typedef struct {
-    unsigned int size;               // number of jobs in the queue
+    unsigned int size;               // no. jobs in the queue
     ThreadPool_job_t *head;          // pointer to the first (shortest) job
     // add other members if needed
 } ThreadPool_job_queue_t;
@@ -24,7 +24,9 @@ typedef struct {
     // add other members if needed
 } ThreadPool_t;
 
+
 void Mytr(thread_func_t func, void *arg);
+
 
 /**
 * C style constructor for creating a new ThreadPool object

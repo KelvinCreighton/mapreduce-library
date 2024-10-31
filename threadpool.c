@@ -1,99 +1,98 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include "threadpool.h"
 
 
 
-
-/**
-* C style constructor for creating a new ThreadPool object
-* Parameters:
-*     num - Number of threads to create
-* Return:
-*     ThreadPool_t* - Pointer to the newly created ThreadPool object
-*/
 ThreadPool_t *ThreadPool_create(unsigned int num) {
-	ThreadPool_t *threadPool = malloc(sizeof(ThreadPool_t));
-	threadPool->threads = malloc(num*sizeof(pthread_t));
+        ThreadPool_t *tp = malloc(sizeof(ThreadPool_t));
+        tp->threads = malloc(num * sizeof(pthread_t));
 
-	threadPool->jobs.size = 0;
-	threadPool->jobs.head = NULL;
-
-	for (unsigned int i = 0; i < num; i++) {
-        	pthread_create(&threadPool->threads[i], NULL, (void *)Thread_run, threadPool);
-	}
-	
-	return threadPool;
-}
-
-/**
-* C style destructor to destroy a ThreadPool object
-* Parameters:
-*     tp - Pointer to the ThreadPool object to be destroyed
-*/
-void ThreadPool_destroy(ThreadPool_t *tp) {
-
-}
-
-/**
-* Add a job to the ThreadPool's job queue
-* Parameters:
-*     tp   - Pointer to the ThreadPool object
-*     func - Pointer to the function that will be called by the serving thread
-*     arg  - Arguments for that function
-* Return:
-*     true  - On success
-*     false - Otherwise
-*/
-bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
-    ThreadPool_job_t *newJob = malloc(sizeof(ThreadPool_job_t));
-    newJob->func = func;
-    newJob->arg = arg;
-    newJob->next = NULL;
-
-    // REPLACE this with a minheap
-	if (tp->jobs.size == 0) {
-        tp->jobs.head = newJob;
-    } else {
-        ThreadPool_job_t *currentJob = tp->jobs.head;
-        while (currentJob->next != NULL) {
-            currentJob = currentJob->next;
+        tp->jobs.size = 0;
+        tp->jobs.head = NULL;
+        
+        for (unsigned int i = 0; i < num; i++) {
+                pthread_create(&tp->threads[i], NULL, (void *)Thread_run, tp);
         }
-        currentJob->next = newJob;
-    }
 
-    tp->jobs.size++; 
-    return 1;
+        return tp;
 }
 
-/**
-* Get a job from the job queue of the ThreadPool object
-* Parameters:
-*     tp - Pointer to the ThreadPool object
-* Return:
-*     ThreadPool_job_t* - Next job to run
-*/
+
+void ThreadPool_destroy(ThreadPool_t *tp) {
+    
+}
+
+/*bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
+    struct stat jobFile_st;
+
+    if (stat((char *)arg, &jobFile_st) != 0) {
+        return false;
+    }
+    
+    ThreadPool_job_t *job = malloc(sizeof(ThreadPool_job_t));
+    job->func = func;
+    job->arg = arg;
+    
+    ThreadPool_job_t **current = &tp->jobs.head;
+    struct stat currentFile_st;
+    // Traverse the queue looking for the next biggest file size
+    while (current != NULL) {
+        stat((char *)(*current)->arg, &currentFile_st);
+        if (currentFile_st.st_size > jobFile_st.st_size) {
+            break;
+        }
+        current = &(*current)->next;
+    }
+
+    // Insert the job at the previous position making the queue in ascending order of file size
+    job->next = *current;
+    *current = job;
+    return false;
+}*/
+
+
+bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg) {
+    struct stat jobFile_st;
+
+    // Get the new jobs file size
+    if (stat((char *)arg, &jobFile_st) != 0) {
+        return false;   // File doesnt exist or some other error
+    }
+
+    // Create a new job
+    ThreadPool_job_t *job = malloc(sizeof(ThreadPool_job_t)); 
+    job->func = func;
+    job->arg = arg;
+    job->next = NULL;
+
+    // Insert the job in ascending order by file size
+    ThreadPool_job_t **current = &tp->jobs.head;
+    struct stat currentJobFile_st;
+
+    // Traverse the list to find the right insertion point
+    while (*current != NULL) {
+        stat((char *)(*current)->arg, &currentJobFile_st);
+        if (currentJobFile_st.st_size > jobFile_st.st_size) {
+            break;
+        }
+        current = &(*current)->next;
+    }
+
+    // Insert the job at the found position
+    job->next = *current;
+    *current = job;
+
+    return true;
+}
+
+
 ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
-	if (tp->jobs.head == NULL) {
-        return NULL;
-    }
-    ThreadPool_job_t *job = tp->jobs.head;
-    tp->jobs.head = job->next;  // Set the head to the next element
-    tp->jobs.size -= 1;
-    return job;
+    return NULL;
 }
 
-/**
-* Start routine of each thread in the ThreadPool Object
-* In a loop, check the job queue, get a job (if any) and run it
-* Parameters:
-*     tp - Pointer to the ThreadPool object containing this thread
-*/
 void *Thread_run(ThreadPool_t *tp) {
-    ThreadPool_job_t *job = ThreadPool_get_job(tp);
-    printf("getjob: %s\n", (char *)(job->arg));
-    job->func(job->arg);
-    printf("done processing\n");
     return NULL;
 }
 
@@ -102,11 +101,7 @@ void Mytr(thread_func_t func, void *arg) {
     printf("done processing\n");
 }
 
-/**
-* Ensure that all threads are idle and the job queue is empty before returning
-* Parameters:
-*     tp - Pointer to the ThreadPool object that will be destroyed
-*/
+
 void ThreadPool_check(ThreadPool_t *tp) {
 
 }
