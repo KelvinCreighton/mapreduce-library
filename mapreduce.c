@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "mapreduce.h"
 #include <string.h>
+#include <sys/stat.h>
+#include "mapreduce.h"
 #include "threadpool.h"
 
 int MR_EmitTest_int = 0;
@@ -58,7 +59,11 @@ void MR_Run(unsigned int file_count, char *file_names[],
 
     ThreadPool_t *tp = ThreadPool_create(num_workers);
     for (unsigned int i = 0; i < file_count; i++) {
-        ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]));
+        struct stat st;
+        if (stat(file_names[i], &st)) {
+            continue; // File doesnt exist
+        }
+        ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]), st.st_size);
     }
 
     showThreadPoolJobs(tp);
@@ -83,7 +88,8 @@ void MR_Emit(char *key, char *value) {
     PartitionTable_node_t *node = malloc(sizeof(PartitionTable_node_t));
     node->key = strdup(key);
     node->value = strdup(value);
-
+    
+    // Put the node as the head of the bucket in the partition hash table
     node->next = pt->buckets[hash].head;
     pt->buckets[hash].head = node;
     pt->buckets[hash].size += 1;
