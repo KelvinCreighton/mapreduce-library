@@ -54,7 +54,7 @@ void ThreadPool_destroy(ThreadPool_t *tp);
 *     true  - On success
 *     false - Otherwise
 */
-bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg, unsigned int funcType, unsigned int priority);
+bool ThreadPool_add_job(ThreadPool_t *tp, thread_func_t func, void *arg);
 
 /**
 * Get a job from the job queue of the ThreadPool object

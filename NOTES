@@ -11,6 +11,7 @@ TODO:
 
 QUESTIONS:
 - should the #includes for other librariers like <stdio.h> be in the header file or the c file?
+- are we allowed to add structs to the mapreduce.c
 
 ANSWERED QUESTIONS:
 - if a long process is currently running then will it interrupt the current process if another shorter process joins the queue? NO this is too complicated just let the current process finish then continue with the queue

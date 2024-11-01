@@ -20,7 +20,6 @@ typedef struct {
 } PartitionTable_t;
 
 
-
 // function pointer typedefs
 typedef void (*Mapper)(char *file_name);
 typedef void (*Reducer)(char *key, unsigned int partition_idx);

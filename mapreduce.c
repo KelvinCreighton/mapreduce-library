@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include "mapreduce.h"
 #include "threadpool.h"
-
-int MR_EmitTest_int = 0;
 
 PartitionTable_t *pt;
 
@@ -65,10 +62,7 @@ void MR_Run(unsigned int file_count, char *file_names[],
 
     ThreadPool_t *tp = ThreadPool_create(num_workers);
     for (unsigned int i = 0; i < file_count; i++) {
-        struct stat st;
-        if (stat(file_names[i], &st))
-            continue; // File doesnt exist
-        ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]), 0, st.st_size);
+        ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]));
     }
 
     showThreadPoolJobs(tp);
@@ -81,21 +75,18 @@ void MR_Run(unsigned int file_count, char *file_names[],
     showPartitionTable(5);
     printline();
 
-    for (unsigned int i = 0; i < pt->size; i++) {
+    /*for (unsigned int i = 0; i < pt->size; i++) {
         if (pt->buckets[i].size == 0)
             continue;   // No keyvalue pairs to process
         ThreadPool_add_job(tp, (void *)reducer, (void *)&(pt->buckets[i]), 1, pt->buckets[i].size);
-    }
+    }*/
 
     showThreadPoolJobs(tp);
     printline();
-
-    printf("MR_Emit() run count: %d\n", MR_EmitTest_int);
 }
 
 
 void MR_Emit(char *key, char *value) {
-    MR_EmitTest_int += 1;
     unsigned int hash = MR_Partitioner(key, pt->size);
 
     // Create new node
