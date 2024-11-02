@@ -74,15 +74,19 @@ void MR_Run(unsigned int file_count, char *file_names[],
     printline();
     showPartitionTable(5);
     printline();
+    
 
-    /*for (unsigned int i = 0; i < pt->size; i++) {
+    // Change this to SJF
+    for (unsigned int i = 0; i < pt->size; i++) {
         if (pt->buckets[i].size == 0)
-            continue;   // No keyvalue pairs to process
-        ThreadPool_add_job(tp, (void *)reducer, (void *)&(pt->buckets[i]), 1, pt->buckets[i].size);
-    }*/
-
-    showThreadPoolJobs(tp);
-    printline();
+            continue;   // No keyvalue pairs to process for bucket[i]
+        Threadarg_t *threadarg = malloc(sizeof(Threadarg_t));
+        void *reducerFunc = malloc(sizeof(Reducer));
+        reducerFunc = (void *)reducer;
+        threadarg->func = reducerFunc;
+        threadarg->partition_idx = i;
+        MR_Reduce(threadarg);
+    }
 }
 
 
@@ -111,10 +115,36 @@ unsigned int MR_Partitioner(char *key, unsigned int num_partitions) {
 
 
 void MR_Reduce(void *threadarg) {
+    Threadarg_t *ta = (Threadarg_t *)threadarg;
+    PartitionTable_node_t *head = pt->buckets[ta->partition_idx].head;
+    Reducer reducer = (Reducer)ta->func;
+    //while (head != NULL) {
+        // Call the Reducer function with the key and partition_idx arguments
+        reducer(head->key, ta->partition_idx);
+    //}
 
 }
 
 char *MR_GetNext(char *key, unsigned int partition_idx) {
-        return NULL;
+    // If the head has the key make the head point to the next node and return its value
+    PartitionTable_node_t *node = pt->buckets[partition_idx].head;
+    if (strcmp(key, node->key)) {
+        pt->buckets[partition_idx].head = node->next;
+        return node->value;
+    }
+
+    // Find the next node with the key and remove it from the list then return its value
+    PartitionTable_node_t *prev = node;
+    node = node->next;
+    while (node != NULL) {
+        if (strcmp(key, node->key) == 0) {
+           prev->next = node->next;
+           return node->value;
+        }
+        
+        prev = node;
+        node = node->next;
+    }
+    return NULL;
 }
 

@@ -25,7 +25,29 @@ typedef struct {
     // add other members if needed
 } ThreadPool_t;
 
+// Partition hash table structs
+typedef struct PartitionTable_node_t {
+    char *key;
+    char *value;
+    struct PartitionTable_node_t *next;
+} PartitionTable_node_t;
 
+typedef struct {
+    unsigned int index;
+    unsigned int size;
+    PartitionTable_node_t *head;
+} PartitionTable_bucket_t;
+
+typedef struct {
+    unsigned int size;
+    PartitionTable_bucket_t *buckets;
+} PartitionTable_t;
+
+// Threadarg struct
+typedef struct {
+    void *func;
+    unsigned int partition_idx;
+} Threadarg_t;
 
 /**
 * C style constructor for creating a new ThreadPool object
