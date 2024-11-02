@@ -114,28 +114,61 @@ unsigned int MR_Partitioner(char *key, unsigned int num_partitions) {
 }
 
 
+int g_counter = 0;
 void MR_Reduce(void *threadarg) {
     Threadarg_t *ta = (Threadarg_t *)threadarg;
     PartitionTable_node_t *head = pt->buckets[ta->partition_idx].head;
     Reducer reducer = (Reducer)ta->func;
-    //while (head != NULL) {
+    while (head != NULL) {
         // Call the Reducer function with the key and partition_idx arguments
         reducer(head->key, ta->partition_idx);
-    //}
+        head = pt->buckets[ta->partition_idx].head;
+    }
+    //printf("gcounter %d\n", g_counter);
+    /*PartitionTable_node_t *node = pt->buckets[ta->partition_idx].head;
+    while (node != NULL) {
+        printf("[%s, %s]->", node->key, node->value);
+        node = node->next;
+     }
+     printf("[NULL]\n");*/
 
 }
 
 char *MR_GetNext(char *key, unsigned int partition_idx) {
-    // If the head has the key make the head point to the next node and return its value
+    if (pt->buckets[partition_idx].head == NULL)
+        return NULL;
+
     PartitionTable_node_t *node = pt->buckets[partition_idx].head;
-    if (strcmp(key, node->key)) {
+    if (strcmp(key, node->key) == 0) {
+        g_counter++;
+        //printf("g_counter in func: %d\n", g_counter);
         pt->buckets[partition_idx].head = node->next;
+        //printf("new head: %s\n", pt->buckets[partition_idx].head->key);
         return node->value;
     }
 
+    while (node->next != NULL) {
+        if (strcmp(key, node->next->key) == 0) {
+            PartitionTable_node_t *temp = node->next;
+            node->next = node->next->next;
+            return temp->value;
+        }
+        node = node->next;
+    }
+    return NULL;
+    // If the head has the key make the head point to the next node and return its value
+    /*PartitionTable_node_t **head = &pt->buckets[partition_idx].head;
+    printf("head now %s\n", (*head)->key);
+    printf("key %s\n", key);
+    if (strcmp(key, (*head)->key) == 0) {
+        head = &(*head)->next;
+        printf("head after %s\n", (*head)->key);
+        return (*head)->value;
+    }
+
     // Find the next node with the key and remove it from the list then return its value
-    PartitionTable_node_t *prev = node;
-    node = node->next;
+    PartitionTable_node_t *prev = (*head);
+    PartitionTable_node_t *node = (*head)->next;
     while (node != NULL) {
         if (strcmp(key, node->key) == 0) {
            prev->next = node->next;
@@ -145,6 +178,6 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
         prev = node;
         node = node->next;
     }
-    return NULL;
+    return NULL;*/
 }
 
