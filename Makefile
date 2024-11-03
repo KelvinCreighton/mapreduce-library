@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g
+CFLAGS = -Wall -Werror -pthread -g
 OBJ = threadpool.o mapreduce.o distwc.o
 
 EXEC = wordcount
@@ -20,10 +20,15 @@ wordcount: $(OBJ)
 
 clean:
 	rm -f $(OBJ) $(EXEC)
+	for file in result-*.txt; do rm -f "$$file"; done
+
+showfiles:
+	for file in result-*.txt; do cat "$$file"; done
 
 test:
 	make clean
 	make
-	./wordcount sample_inputs/sample11.txt sample_inputs/mysample1.txt sample_inputs/sample9.txt
+	./wordcount sample_inputs/sample11.txt
+	make showfiles
 
 

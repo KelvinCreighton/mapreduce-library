@@ -50,11 +50,11 @@ void MR_Run(unsigned int file_count, char *file_names[],
             unsigned int num_workers, unsigned int num_parts) {
     printf("\n\n\n");
     printline();
-    
+   
     pt = malloc(sizeof(PartitionTable_t));
     pt->buckets = malloc(num_parts * sizeof(PartitionTable_bucket_t));
     pt->size = num_parts;
-
+    
     for (unsigned int i = 0; i < num_parts; i++) {
         pt->buckets[i].size = 0;
         pt->buckets[i].index = i;
@@ -64,13 +64,16 @@ void MR_Run(unsigned int file_count, char *file_names[],
     for (unsigned int i = 0; i < file_count; i++) {
         ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]));
     }
-
+     
     showThreadPoolJobs(tp);
     printline();
     Thread_run(tp);
     printline();
     showThreadPoolJobs(tp);
-    
+
+    // Mapper done -> free thread pool
+    ThreadPool_destroy(tp);
+
     printline();
     showPartitionTable(5);
     printline();
@@ -81,12 +84,12 @@ void MR_Run(unsigned int file_count, char *file_names[],
         if (pt->buckets[i].size == 0)
             continue;   // No keyvalue pairs to process for bucket[i]
         Threadarg_t *threadarg = malloc(sizeof(Threadarg_t));
-        void *reducerFunc = malloc(sizeof(Reducer));
-        reducerFunc = (void *)reducer;
-        threadarg->func = reducerFunc;
+        threadarg->func = (void *)reducer;
         threadarg->partition_idx = i;
         MR_Reduce(threadarg);
     }
+    free(pt->buckets);
+    free(pt);
 }
 
 
@@ -114,7 +117,6 @@ unsigned int MR_Partitioner(char *key, unsigned int num_partitions) {
 }
 
 
-int g_counter = 0;
 void MR_Reduce(void *threadarg) {
     Threadarg_t *ta = (Threadarg_t *)threadarg;
     PartitionTable_node_t *head = pt->buckets[ta->partition_idx].head;
@@ -124,14 +126,7 @@ void MR_Reduce(void *threadarg) {
         reducer(head->key, ta->partition_idx);
         head = pt->buckets[ta->partition_idx].head;
     }
-    //printf("gcounter %d\n", g_counter);
-    /*PartitionTable_node_t *node = pt->buckets[ta->partition_idx].head;
-    while (node != NULL) {
-        printf("[%s, %s]->", node->key, node->value);
-        node = node->next;
-     }
-     printf("[NULL]\n");*/
-
+    free(ta);
 }
 
 char *MR_GetNext(char *key, unsigned int partition_idx) {
@@ -140,44 +135,26 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
 
     PartitionTable_node_t *node = pt->buckets[partition_idx].head;
     if (strcmp(key, node->key) == 0) {
-        g_counter++;
-        //printf("g_counter in func: %d\n", g_counter);
         pt->buckets[partition_idx].head = node->next;
-        //printf("new head: %s\n", pt->buckets[partition_idx].head->key);
-        return node->value;
+        char *value = strdup(node->value);
+        free(node->key);
+        free(node->value);
+        free(node);
+        return value;
     }
-
+ 
     while (node->next != NULL) {
         if (strcmp(key, node->next->key) == 0) {
             PartitionTable_node_t *temp = node->next;
+            char *value = strdup(temp->value);
             node->next = node->next->next;
-            return temp->value;
+            free(temp->key);
+            free(temp->value);
+            free(temp);
+            return value;
         }
         node = node->next;
     }
     return NULL;
-    // If the head has the key make the head point to the next node and return its value
-    /*PartitionTable_node_t **head = &pt->buckets[partition_idx].head;
-    printf("head now %s\n", (*head)->key);
-    printf("key %s\n", key);
-    if (strcmp(key, (*head)->key) == 0) {
-        head = &(*head)->next;
-        printf("head after %s\n", (*head)->key);
-        return (*head)->value;
-    }
-
-    // Find the next node with the key and remove it from the list then return its value
-    PartitionTable_node_t *prev = (*head);
-    PartitionTable_node_t *node = (*head)->next;
-    while (node != NULL) {
-        if (strcmp(key, node->key) == 0) {
-           prev->next = node->next;
-           return node->value;
-        }
-        
-        prev = node;
-        node = node->next;
-    }
-    return NULL;*/
-}
+} 
 

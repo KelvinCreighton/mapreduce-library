@@ -21,7 +21,9 @@ ThreadPool_t *ThreadPool_create(unsigned int num) {
 
 
 void ThreadPool_destroy(ThreadPool_t *tp) {
-    
+    ThreadPool_check(tp);
+    free(tp->threads);
+    free(tp);
 }
 
 
@@ -63,15 +65,19 @@ ThreadPool_job_t *ThreadPool_get_job(ThreadPool_t *tp) {
 
 void *Thread_run(ThreadPool_t *tp) {
     ThreadPool_job_t *job = ThreadPool_get_job(tp);
-    if (job != NULL) {
-        job->func(job->arg);
-        printf("done processing: %s\n", (char *)job->arg);
-    }
-
-    return NULL;
+    if (job == NULL)
+        return NULL;
+    job->func(job->arg);
+    free(job);
+    return NULL; 
 }
 
 
 void ThreadPool_check(ThreadPool_t *tp) {
-
+    ThreadPool_job_t *job = ThreadPool_get_job(tp);
+    while (job != NULL) {
+        ThreadPool_job_t *temp = job;
+        job = ThreadPool_get_job(tp);
+        free(temp);
+    }
 }
