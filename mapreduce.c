@@ -8,9 +8,8 @@ PartitionTable_t *pt;
 
 void showPartitionTable(unsigned int limited) {
     for (unsigned int i = 0; i < pt->size; i++) {
-        PartitionTable_bucket_t bucket = pt->buckets[i];
-        printf(" %-5d [%d]->", bucket.size, i);
-        PartitionTable_node_t *node = bucket.head;
+        printf(" %-5d [%d]->", pt->buckets[i].size, i);
+        PartitionTable_node_t *node = pt->buckets[i].head;
         unsigned int count = 0;
         while (node != NULL) {
            printf("[%s, %s]->", node->key, node->value);
@@ -29,12 +28,7 @@ void showPartitionTable(unsigned int limited) {
 void showThreadPoolJobs(ThreadPool_t *tp) {
     ThreadPool_job_t *job = tp->jobs.head;
     while (job != NULL) {
-        if (job->funcType == 0) {
             printf("[%s]->", (char *)job->arg);
-        } else if (job->funcType == 1) {
-            PartitionTable_bucket_t *bucket = (PartitionTable_bucket_t *)job->arg;
-            printf("[%s, %d]->", bucket->head->key, bucket->index);
-        }
         job = job->next;
     }
     printf("[NULL]\n");
@@ -58,6 +52,7 @@ void MR_Run(unsigned int file_count, char *file_names[],
     for (unsigned int i = 0; i < num_parts; i++) {
         pt->buckets[i].size = 0;
         pt->buckets[i].index = i;
+        pt->buckets[i].head = NULL;
     }
 
     ThreadPool_t *tp = ThreadPool_create(num_workers);
@@ -73,11 +68,9 @@ void MR_Run(unsigned int file_count, char *file_names[],
 
     // Mapper done -> free thread pool
     ThreadPool_destroy(tp);
-
     printline();
     showPartitionTable(5);
     printline();
-    
 
     // Change this to SJF
     for (unsigned int i = 0; i < pt->size; i++) {
@@ -137,18 +130,19 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
     if (strcmp(key, node->key) == 0) {
         pt->buckets[partition_idx].head = node->next;
         char *value = strdup(node->value);
-        free(node->key);
+        //free(node->key);
         free(node->value);
         free(node);
         return value;
     }
+
  
     while (node->next != NULL) {
         if (strcmp(key, node->next->key) == 0) {
             PartitionTable_node_t *temp = node->next;
             char *value = strdup(temp->value);
             node->next = node->next->next;
-            free(temp->key);
+            //free(temp->key);
             free(temp->value);
             free(temp);
             return value;
