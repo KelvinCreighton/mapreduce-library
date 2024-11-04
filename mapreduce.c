@@ -116,7 +116,9 @@ void MR_Reduce(void *threadarg) {
     Reducer reducer = (Reducer)ta->func;
     while (head != NULL) {
         // Call the Reducer function with the key and partition_idx arguments
-        reducer(head->key, ta->partition_idx);
+        char *key = strdup(head->key);
+        reducer(key, ta->partition_idx);
+        free(key);
         head = pt->buckets[ta->partition_idx].head;
     }
     free(ta);
@@ -130,7 +132,7 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
     if (strcmp(key, node->key) == 0) {
         pt->buckets[partition_idx].head = node->next;
         char *value = strdup(node->value);
-        //free(node->key);
+        free(node->key);
         free(node->value);
         free(node);
         return value;
@@ -142,7 +144,7 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
             PartitionTable_node_t *temp = node->next;
             char *value = strdup(temp->value);
             node->next = node->next->next;
-            //free(temp->key);
+            free(temp->key);
             free(temp->value);
             free(temp);
             return value;
