@@ -56,9 +56,12 @@ void MR_Run(unsigned int file_count, char *file_names[],
     }
 
     ThreadPool_t *tp = ThreadPool_create(num_workers);
+    // TODO: put a mutex inside the add job function
+    //pthread_mutex_lock(&tp->mutex);
     for (unsigned int i = 0; i < file_count; i++) {
         ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]));
     }
+    //pthread_mutex_unlock(&tp->mutex);
      
     showThreadPoolJobs(tp);
     printline();
@@ -66,7 +69,6 @@ void MR_Run(unsigned int file_count, char *file_names[],
     printline();
     showThreadPoolJobs(tp);
 
-    // Mapper done -> free thread pool
     ThreadPool_destroy(tp);
     printline();
     showPartitionTable(5);
