@@ -20,15 +20,22 @@ wordcount: $(OBJ)
 
 clean:
 	rm -f $(OBJ) $(EXEC)
+	make cleanfiles
+
+cleanfiles:
 	for file in result-*.txt; do rm -f "$$file"; done
 
 showfiles:
 	for file in result-*.txt; do cat "$$file"; done
 
-test:
+test1:
 	make clean
 	make
 	./wordcount sample_inputs/sample11.txt
 	make showfiles
 
-
+test2:
+	make clean
+	make
+	./wordcount sample_inputs/sample11.txt sample_inputs/sample10.txt sample_inputs/sample9.txt sample_inputs/mysample1.txt
+	make showfiles

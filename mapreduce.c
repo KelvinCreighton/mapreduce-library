@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "mapreduce.h"
 #include "threadpool.h"
 
@@ -44,45 +45,71 @@ void MR_Run(unsigned int file_count, char *file_names[],
             unsigned int num_workers, unsigned int num_parts) {
     printf("\n\n\n");
     printline();
-   
+    
+    // Create the partition table
     pt = malloc(sizeof(PartitionTable_t));
     pt->buckets = malloc(num_parts * sizeof(PartitionTable_bucket_t));
     pt->size = num_parts;
     
+    // Allocate each partition as a bucket in the partition table
     for (unsigned int i = 0; i < num_parts; i++) {
         pt->buckets[i].size = 0;
         pt->buckets[i].index = i;
         pt->buckets[i].head = NULL;
     }
-
+    
+    // Create the threads
     ThreadPool_t *tp = ThreadPool_create(num_workers);
-    // TODO: put a mutex inside the add job function
-    //pthread_mutex_lock(&tp->mutex);
+
+
+    tp->active_workers = 1;     // Flag that jobs are being added to the job queue
+    tp->func_type = 0;          // Flag to indicate we are at the mapper part of the code
+    struct stat st;
+    // Add all the files to the job queue with its priority based on the file size
+    pthread_mutex_lock(&tp->mutex);
     for (unsigned int i = 0; i < file_count; i++) {
+        if (stat(file_names[i], &st) != 0)
+            continue;           // Error reading the file
+        tp->priority = (unsigned int)st.st_size;
         ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]));
     }
-    //pthread_mutex_unlock(&tp->mutex);
-     
+    tp->active_workers = 0;     // Flag that all the jobs have finished being added
+    pthread_cond_broadcast(&tp->cond); // Wake up all waiting threads
+    pthread_mutex_unlock(&tp->mutex);
+
+    // Check if the job queue is empty and if there are no more active threads before continueing with the rest of the code
+    //ThreadPool_check(tp);
+    
     showThreadPoolJobs(tp);
     printline();
     Thread_run(tp);
     printline();
     showThreadPoolJobs(tp);
 
-    ThreadPool_destroy(tp);
     printline();
     showPartitionTable(5);
     printline();
-
-    // Change this to SJF
+    
+    tp->func_type = 1;  // Flag to indicate that we are at the reducer part of the code
+    pthread_mutex_lock(&tp->mutex);
     for (unsigned int i = 0; i < pt->size; i++) {
         if (pt->buckets[i].size == 0)
             continue;   // No keyvalue pairs to process for bucket[i]
+        tp->priority = pt->buckets[i].size;
         Threadarg_t *threadarg = malloc(sizeof(Threadarg_t));
         threadarg->func = (void *)reducer;
         threadarg->partition_idx = i;
-        MR_Reduce(threadarg);
+       ThreadPool_add_job(tp, (thread_func_t)MR_Reduce, (void *)threadarg);
     }
+    pthread_mutex_unlock(&tp->mutex);
+
+    showThreadPoolJobs(tp);
+    printline();
+    Thread_run(tp);
+    printline();
+    showThreadPoolJobs(tp);
+    printline();
+
     free(pt->buckets);
     free(pt);
 }
@@ -100,6 +127,15 @@ void MR_Emit(char *key, char *value) {
     node->next = pt->buckets[hash].head;
     pt->buckets[hash].head = node;
     pt->buckets[hash].size += 1;
+
+    // Compare and swap buckets to keep them in ascending order of number of keys
+    /*if (hash == pt->size-1)
+        return;
+    if (pt->buckets[hash].size > pt->buckets[hash+1].size) {
+        PartitionTable_bucket_t tmp = pt->buckets[hash];
+        pt->buckets[hash] = pt->buckets[hash+1];
+        pt->buckets[hash+1] = tmp;
+    }*/
 }
 
 

@@ -9,6 +9,7 @@ typedef struct ThreadPool_job_t {
     thread_func_t func;              // function pointer
     void *arg;                       // arguments for that function
     struct ThreadPool_job_t *next;   // pointer to the next job in the queue
+    unsigned int priority;
 } ThreadPool_job_t;
 
 typedef struct {
@@ -21,7 +22,10 @@ typedef struct {
     unsigned int num_workers;
     ThreadPool_job_queue_t jobs;     // queue of jobs waiting for a thread to run
     pthread_mutex_t mutex;
+    pthread_cond_t cond;
     unsigned int active_workers;
+    int func_type;
+    unsigned int priority;
 } ThreadPool_t;
 
 // Partition hash table structs
