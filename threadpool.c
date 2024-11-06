@@ -24,7 +24,6 @@ ThreadPool_t *ThreadPool_create(unsigned int num) {
 
 
 void ThreadPool_destroy(ThreadPool_t *tp) {
-    ThreadPool_check(tp);
     pthread_mutex_destroy(&tp->mutex);
     pthread_cond_destroy(&tp->cond);
     for (unsigned int i = 0; i < tp->num_workers; i++) {
@@ -73,11 +72,11 @@ void *Thread_run(ThreadPool_t *tp) {
         ThreadPool_job_t *job = ThreadPool_get_job(tp);
 
         // Break the loop if there are no more jobs
-        if (job == NULL && tp->active_workers == 0) {
+        if (job == NULL) {
+            if (tp->active_workers == 0)
+                pthread_cond_signal(&tp->cond);
             pthread_mutex_unlock(&tp->mutex);
             break;
-        } else if (job == NULL) {
-            pthread_mutex_unlock(&tp->mutex);
 
         // Else increment the active workers and run the job
         } else {
@@ -92,15 +91,15 @@ void *Thread_run(ThreadPool_t *tp) {
             pthread_mutex_unlock(&tp->mutex);
         }
     }
+    
     return NULL;
 }
 
 
 void ThreadPool_check(ThreadPool_t *tp) {
-    ThreadPool_job_t *job = ThreadPool_get_job(tp);
-    while (job != NULL) {
-        ThreadPool_job_t *temp = job;
-        job = ThreadPool_get_job(tp);
-        free(temp);
+    pthread_mutex_lock(&tp->mutex);
+    while (tp->active_workers > 0) {
+        pthread_cond_wait(&tp->cond, &tp->mutex);
     }
+    pthread_mutex_unlock(&tp->mutex);
 }

@@ -74,22 +74,27 @@ void MR_Run(unsigned int file_count, char *file_names[],
         ThreadPool_add_job(tp, (void *)mapper, (void *)(file_names[i]));
     }
     tp->active_workers = 0;     // Flag that all the jobs have finished being added
-    pthread_cond_broadcast(&tp->cond); // Wake up all waiting threads
+    pthread_cond_signal(&tp->cond); // Release the waiting threads
     pthread_mutex_unlock(&tp->mutex);
+    
+    // Check if the main thread is still adding jobs to the job queue
+    ThreadPool_check(tp);
 
-    // Check if the job queue is empty and if there are no more active threads before continueing with the rest of the code
-    //ThreadPool_check(tp);
     
     showThreadPoolJobs(tp);
     printline();
+    
     Thread_run(tp);
-    printline();
+    
     showThreadPoolJobs(tp);
-
     printline();
+    
     showPartitionTable(5);
     printline();
     
+    ThreadPool_check(tp);
+
+    tp->active_workers = 1;     // Flag that jobs are being added to the job queue
     tp->func_type = 1;  // Flag to indicate that we are at the reducer part of the code
     pthread_mutex_lock(&tp->mutex);
     for (unsigned int i = 0; i < pt->size; i++) {
@@ -101,15 +106,22 @@ void MR_Run(unsigned int file_count, char *file_names[],
         threadarg->partition_idx = i;
        ThreadPool_add_job(tp, (thread_func_t)MR_Reduce, (void *)threadarg);
     }
+    tp->active_workers = 0;     // Flag that jobs are done being added to the job queue
+    pthread_cond_signal(&tp->cond); // Release the waiting threads
     pthread_mutex_unlock(&tp->mutex);
 
-    showThreadPoolJobs(tp);
-    printline();
-    Thread_run(tp);
-    printline();
-    showThreadPoolJobs(tp);
-    printline();
+    ThreadPool_check(tp);
 
+    showThreadPoolJobs(tp);
+    printline();
+    
+    Thread_run(tp);
+    
+    showThreadPoolJobs(tp);
+    printline();
+    
+    ThreadPool_check(tp);
+    ThreadPool_destroy(tp);
     free(pt->buckets);
     free(pt);
 }
