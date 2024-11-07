@@ -44,6 +44,7 @@ typedef struct {
 typedef struct {
     unsigned int size;
     PartitionTable_bucket_t *buckets;
+    pthread_mutex_t mutex;
 } PartitionTable_t;
 
 // Threadarg struct

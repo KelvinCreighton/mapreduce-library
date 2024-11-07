@@ -50,6 +50,7 @@ void MR_Run(unsigned int file_count, char *file_names[],
     pt = malloc(sizeof(PartitionTable_t));
     pt->buckets = malloc(num_parts * sizeof(PartitionTable_bucket_t));
     pt->size = num_parts;
+    pthread_mutex_init(&pt->mutex, NULL);
     
     // Allocate each partition as a bucket in the partition table
     for (unsigned int i = 0; i < num_parts; i++) {
@@ -81,16 +82,16 @@ void MR_Run(unsigned int file_count, char *file_names[],
     ThreadPool_check(tp);
 
     
-    showThreadPoolJobs(tp);
-    printline();
+    //showThreadPoolJobs(tp);
+    //printline();
     
     Thread_run(tp);
     
-    showThreadPoolJobs(tp);
-    printline();
+    //showThreadPoolJobs(tp);
+    //printline();
     
-    showPartitionTable(5);
-    printline();
+    //showPartitionTable(-1);
+    //printline();
     
     ThreadPool_check(tp);
 
@@ -112,16 +113,17 @@ void MR_Run(unsigned int file_count, char *file_names[],
 
     ThreadPool_check(tp);
 
-    showThreadPoolJobs(tp);
-    printline();
+    //showThreadPoolJobs(tp);
+    //printline();
     
     Thread_run(tp);
     
-    showThreadPoolJobs(tp);
-    printline();
+    //showThreadPoolJobs(tp);
+    //printline();
     
     ThreadPool_check(tp);
     ThreadPool_destroy(tp);
+    pthread_mutex_destroy(&pt->mutex);
     free(pt->buckets);
     free(pt);
 }
@@ -130,24 +132,31 @@ void MR_Run(unsigned int file_count, char *file_names[],
 void MR_Emit(char *key, char *value) {
     unsigned int hash = MR_Partitioner(key, pt->size);
 
-    // Create new node
-    PartitionTable_node_t *node = malloc(sizeof(PartitionTable_node_t));
-    node->key = strdup(key);
-    node->value = strdup(value);
+    // Create the new node
+    PartitionTable_node_t *newNode = malloc(sizeof(PartitionTable_node_t));
+    newNode->key = strdup(key);
+    newNode->value = strdup(value);
     
-    // Put the node as the head of the bucket in the partition hash table
-    node->next = pt->buckets[hash].head;
-    pt->buckets[hash].head = node;
-    pt->buckets[hash].size += 1;
-
-    // Compare and swap buckets to keep them in ascending order of number of keys
-    /*if (hash == pt->size-1)
+    // Iterate through the partition comparing they keys to order them in ascending ASCII order
+    pthread_mutex_lock(&pt->mutex);
+    PartitionTable_node_t *currentNode = pt->buckets[hash].head;
+    // If the partition is empty or if the new key is before the head then place it as the new head
+    if (currentNode == NULL || strcmp(key, currentNode->key) <= 0) {
+        pt->buckets[hash].head = newNode;
+        newNode->next = currentNode;
+        pt->buckets[hash].size += 1;
+        pthread_mutex_unlock(&pt->mutex);
         return;
-    if (pt->buckets[hash].size > pt->buckets[hash+1].size) {
-        PartitionTable_bucket_t tmp = pt->buckets[hash];
-        pt->buckets[hash] = pt->buckets[hash+1];
-        pt->buckets[hash+1] = tmp;
-    }*/
+    }
+    // Iterate through the list finding the place for the new key to keep the partition in ascending ASCII order
+    while (currentNode->next != NULL && strcmp(key, currentNode->next->key) > 0) {
+        currentNode = currentNode->next;
+    }
+    PartitionTable_node_t *tmp = currentNode->next;
+    currentNode->next = newNode;
+    newNode->next = tmp;
+    pt->buckets[hash].size += 1;
+    pthread_mutex_unlock(&pt->mutex);
 }
 
 
@@ -162,22 +171,31 @@ unsigned int MR_Partitioner(char *key, unsigned int num_partitions) {
 
 void MR_Reduce(void *threadarg) {
     Threadarg_t *ta = (Threadarg_t *)threadarg;
-    PartitionTable_node_t *head = pt->buckets[ta->partition_idx].head;
     Reducer reducer = (Reducer)ta->func;
+    pthread_mutex_lock(&pt->mutex);
+    PartitionTable_node_t *head = pt->buckets[ta->partition_idx].head;
     while (head != NULL) {
         // Call the Reducer function with the key and partition_idx arguments
         char *key = strdup(head->key);
+        pthread_mutex_unlock(&pt->mutex);
         reducer(key, ta->partition_idx);
         free(key);
+        pthread_mutex_lock(&pt->mutex);
         head = pt->buckets[ta->partition_idx].head;
+        pthread_mutex_unlock(&pt->mutex);
     }
     free(ta);
 }
 
 char *MR_GetNext(char *key, unsigned int partition_idx) {
-    if (pt->buckets[partition_idx].head == NULL)
+    pthread_mutex_lock(&pt->mutex);
+    // Return null if the bucket is empty
+    if (pt->buckets[partition_idx].head == NULL) {
+        pthread_mutex_unlock(&pt->mutex);
         return NULL;
-
+    }
+    
+    // If the head key compares with the given key, return the head and point the head to the next node
     PartitionTable_node_t *node = pt->buckets[partition_idx].head;
     if (strcmp(key, node->key) == 0) {
         pt->buckets[partition_idx].head = node->next;
@@ -185,10 +203,11 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
         free(node->key);
         free(node->value);
         free(node);
+        pthread_mutex_unlock(&pt->mutex);
         return value;
     }
 
- 
+    // Itterate through the rest of the bucket searching for the next node key that compares with the given key
     while (node->next != NULL) {
         if (strcmp(key, node->next->key) == 0) {
             PartitionTable_node_t *temp = node->next;
@@ -197,10 +216,12 @@ char *MR_GetNext(char *key, unsigned int partition_idx) {
             free(temp->key);
             free(temp->value);
             free(temp);
+            pthread_mutex_unlock(&pt->mutex);
             return value;
         }
         node = node->next;
     }
+    pthread_mutex_unlock(&pt->mutex);
     return NULL;
 } 
 
