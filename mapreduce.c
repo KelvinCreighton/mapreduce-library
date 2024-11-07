@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -7,44 +6,9 @@
 
 PartitionTable_t *pt;
 
-void showPartitionTable(unsigned int limited) {
-    for (unsigned int i = 0; i < pt->size; i++) {
-        printf(" %-5d [%d]->", pt->buckets[i].size, i);
-        PartitionTable_node_t *node = pt->buckets[i].head;
-        unsigned int count = 0;
-        while (node != NULL) {
-           printf("[%s, %s]->", node->key, node->value);
-           node = node->next;
-           count++;
-           if (limited != -1 && count > limited)
-               break;
-        }
-        if (limited != -1 && count > limited)
-            printf("...\n");
-        else
-            printf("[NULL]\n");
-    }
-}
-
-void showThreadPoolJobs(ThreadPool_t *tp) {
-    ThreadPool_job_t *job = tp->jobs.head;
-    while (job != NULL) {
-            printf("[%s]->", (char *)job->arg);
-        job = job->next;
-    }
-    printf("[NULL]\n");
-}
-
-void printline() {
-    printf("-------------------------------------------------------\n");
-}
-
-
 void MR_Run(unsigned int file_count, char *file_names[],
             Mapper mapper, Reducer reducer, 
             unsigned int num_workers, unsigned int num_parts) {
-    printf("\n\n\n");
-    printline();
     
     // Create the partition table
     pt = malloc(sizeof(PartitionTable_t));
@@ -81,17 +45,7 @@ void MR_Run(unsigned int file_count, char *file_names[],
     // Check if the main thread is still adding jobs to the job queue
     ThreadPool_check(tp);
 
-    
-    //showThreadPoolJobs(tp);
-    //printline();
-    
     Thread_run(tp);
-    
-    //showThreadPoolJobs(tp);
-    //printline();
-    
-    //showPartitionTable(-1);
-    //printline();
     
     ThreadPool_check(tp);
 
@@ -113,13 +67,7 @@ void MR_Run(unsigned int file_count, char *file_names[],
 
     ThreadPool_check(tp);
 
-    //showThreadPoolJobs(tp);
-    //printline();
-    
     Thread_run(tp);
-    
-    //showThreadPoolJobs(tp);
-    //printline();
     
     ThreadPool_check(tp);
     ThreadPool_destroy(tp);
