@@ -1,0 +1,17 @@
+Structure and functionality [15/15]
+
+Correctness [30/40]
+Comment: Errors detected when running test cases other than sample_inputs
+
+Runtime [5/5]
+
+Memory Leaks [10/10]
+
+Makefile [15/15]
+
+README [15/15]
+
+Total [90/100]
+
+Graded by Jialiang Yan
+
